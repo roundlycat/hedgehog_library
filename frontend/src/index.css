@@ -1,0 +1,247 @@
+/* Hedgehog Library — styles */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-cream-100 text-bark-900 font-sans antialiased;
+    min-height: 100dvh;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-cream-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-bark-300 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-bark-400;
+  }
+}
+
+@layer components {
+
+  /* ── Buttons ── */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 bg-bark-800 text-cream-50 px-4 py-2.5 rounded-xl font-medium text-sm tracking-wide hover:bg-bark-700 active:bg-bark-900 transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none shadow-sm hover:shadow-md;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 bg-cream-50 text-bark-800 px-4 py-2.5 rounded-xl font-medium text-sm border border-cream-200 hover:bg-cream-100 hover:border-bark-300 transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 text-bark-500 px-3 py-2 rounded-lg text-sm hover:bg-cream-200 hover:text-bark-800 transition-all duration-150;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 bg-rust-500 text-white px-4 py-2.5 rounded-xl font-medium text-sm hover:bg-rust-400 active:bg-rust-600 transition-all duration-150;
+  }
+
+  .btn-icon {
+    @apply inline-flex items-center justify-center w-9 h-9 rounded-xl text-bark-500 hover:bg-cream-200 hover:text-bark-800 transition-all duration-150;
+  }
+
+  /* ── Cards ── */
+  .card {
+    @apply bg-cream-50 rounded-2xl border border-cream-200 shadow-card;
+  }
+
+  .card-hover {
+    @apply card cursor-pointer hover:shadow-card-hover hover:border-bark-300 transition-all duration-200;
+  }
+
+  .card-book {
+    @apply bg-cream-50 rounded-2xl border border-cream-200 shadow-card cursor-pointer hover:shadow-card-hover hover:border-bark-300 hover:-translate-y-0.5 transition-all duration-200 ease-out;
+  }
+
+  /* ── Inputs ── */
+  .input {
+    @apply w-full bg-cream-50 border border-cream-200 rounded-xl px-3.5 py-2.5 text-sm text-bark-900 placeholder:text-bark-400 focus:outline-none focus:border-bark-400 transition-all duration-150;
+    --tw-ring-color: rgba(160, 120, 80, 0.35);
+  }
+
+  .input:focus {
+    box-shadow: 0 0 0 2px rgba(160, 120, 80, 0.25);
+  }
+
+  .input-search {
+    @apply w-full border rounded-xl pl-9 pr-10 py-2 text-sm placeholder:text-bark-400 focus:outline-none focus:bg-cream-50 transition-all duration-200;
+    background-color: rgba(250, 248, 244, 0.1);
+    border-color: rgba(232, 217, 194, 0.6);
+  }
+
+  .input-search:focus {
+    background-color: #faf8f4;
+    border-color: rgba(160, 120, 80, 0.5);
+    box-shadow: 0 0 0 2px rgba(160, 120, 80, 0.2);
+  }
+
+  /* ── Status badges ── */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium;
+  }
+
+  .badge-read {
+    @apply badge text-moss-600;
+    background-color: rgba(107, 124, 90, 0.12);
+  }
+
+  .badge-reading {
+    @apply badge text-amber-500;
+    background-color: rgba(232, 168, 48, 0.15);
+  }
+
+  .badge-unread {
+    @apply badge text-bark-500;
+    background-color: rgba(160, 120, 80, 0.1);
+  }
+
+  /* ── Skeleton loading ── */
+  .skeleton {
+    @apply rounded-lg overflow-hidden relative;
+    background: linear-gradient(90deg,
+        theme('colors.cream.200') 25%,
+        theme('colors.cream.100') 50%,
+        theme('colors.cream.200') 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  /* ── Pill tags ── */
+  .tag-pill {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-bark-500 bg-cream-200 border border-cream-200 whitespace-nowrap;
+  }
+
+  /* ── Divider ── */
+  .divider {
+    @apply border-t border-cream-200;
+  }
+
+  /* ── Panel ── */
+  .panel-section {
+    @apply card p-4 space-y-3;
+  }
+
+  /* ── Star rating ── */
+  .star {
+    @apply cursor-pointer text-cream-300 hover:text-amber-400 transition-colors duration-100;
+  }
+
+  .star-filled {
+    @apply text-amber-400;
+  }
+
+  .star-half {
+    @apply text-amber-300;
+  }
+}
+
+/* ── Mobile tap targets ── */
+@media (max-width: 640px) {
+
+  button,
+  a[role="button"] {
+    min-height: 44px;
+  }
+}
+
+/* ── Smooth dialog backdrop ── */
+.dialog-backdrop {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* ── Book cover placeholder gradient ── */
+.cover-placeholder {
+  background: linear-gradient(135deg,
+      theme('colors.bark.700') 0%,
+      theme('colors.bark.500') 50%,
+      theme('colors.bark.600') 100%);
+}
+
+/* ── Progress bar ── */
+.progress-bar {
+  @apply h-2 bg-cream-200 rounded-full overflow-hidden;
+}
+
+.progress-fill {
+  @apply h-full bg-gradient-to-r from-bark-600 to-bark-400 rounded-full transition-all duration-500;
+}
+
+/* ── Toast container ── */
+#toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.toast {
+  @apply flex items-center gap-3 px-4 py-3 rounded-xl shadow-modal text-sm font-medium;
+  pointer-events: auto;
+  animation: slideInRight 0.25s ease-out, fadeOut 0.3s ease-in 2.7s forwards;
+  max-width: 320px;
+}
+
+.toast-success {
+  @apply bg-moss-600 text-white;
+}
+
+.toast-error {
+  @apply bg-rust-500 text-white;
+}
+
+.toast-info {
+  @apply bg-bark-800 text-cream-50;
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+}
+
+/* ── Header gradient ── */
+.header-gradient {
+  background: linear-gradient(135deg, #3d2a14 0%, #2d1a0e 65%, #1e1008 100%);
+}
+
+/* ── Shelf wood effect ── */
+.shelf-chip-active {
+  background: linear-gradient(135deg, #553a1f 0%, #3d2a14 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* ── Reading progress ring ── */
+.ring-stats {
+  stroke-dasharray: 100;
+  transition: stroke-dashoffset 1s ease;
+}

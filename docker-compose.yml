@@ -1,0 +1,36 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: hedgehog-library-db
+    environment:
+      POSTGRES_DB: hedgehog_library
+      POSTGRES_USER: hedgehog
+      POSTGRES_PASSWORD: hedgehog_secret
+    ports:
+      - "5435:5432"
+    volumes:
+      - hedgehog_library_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hedgehog -d hedgehog_library"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: hedgehog-library-api
+    environment:
+      DATABASE_URL: postgresql+asyncpg://hedgehog:hedgehog_secret@db:5432/hedgehog_library
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      EMBEDDING_MODEL: all-MiniLM-L6-v2
+    ports:
+      - "8002:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  hedgehog_library_data:
