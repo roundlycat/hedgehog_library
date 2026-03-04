@@ -38,8 +38,14 @@ export function RecommendationDialog({ onClose, onAdded }: Props) {
       })
       onAdded(book)
       onClose()
-      const typeLabel = sourceType === 'journal_article' ? 'article' : 'book'
       toastSuccess(`"${title}" added as recommendation`)
+
+      // Auto-enrich in background (fire and forget)
+      setTimeout(() => {
+        booksApi.enrich(book.id).catch(() => {
+          // Silent fail - enrichment is optional
+        })
+      }, 500)
     } catch {
       toastError('Failed to save recommendation')
     } finally {

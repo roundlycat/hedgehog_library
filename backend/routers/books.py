@@ -10,7 +10,7 @@ from models import Book
 from schemas import (BookCreate, BookUpdate, BookResponse, BookListResponse,
                      ShelfAssignRequest, ISBNLookupRequest, ImportResponse)
 from services.embeddings import generate_book_embedding
-from services.enrichment import lookup_isbn
+from services.enrichment import lookup_isbn, enrich_book
 
 router = APIRouter(prefix="/api/books", tags=["books"])
 
@@ -98,6 +98,37 @@ async def assign_shelf(book_id: int, data: ShelfAssignRequest, db: AsyncSession 
     book.shelf = data.shelf
     await db.flush()
     await db.refresh(book)
+    return book
+
+
+@router.post("/{book_id}/enrich", response_model=BookResponse)
+async def enrich_book_endpoint(book_id: int, db: AsyncSession = Depends(get_db)):
+    """Auto-enrich a book with Claude-generated tags, time period, and philosophical school."""
+    book = await db.get(Book, book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    try:
+        result = await enrich_book(book.title, book.creators, book.description)
+        if result.get("tags"):
+            book.tags = result["tags"]
+        if result.get("time_period"):
+            book.time_period = result["time_period"]
+        if result.get("philosophical_school"):
+            book.philosophical_school = result["philosophical_school"]
+        if result.get("description") and not book.description:
+            book.description = result["description"]
+        if result.get("related_authors"):
+            book.related_authors = result["related_authors"]
+        book.enriched = True
+        embedding = await generate_book_embedding(
+            book.title, book.creators, book.description,
+            book.tags, book.time_period, book.philosophical_school
+        )
+        book.embedding = embedding
+        await db.flush()
+        await db.refresh(book)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Enrichment failed: {str(e)}")
     return book
 
 

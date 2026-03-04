@@ -32,6 +32,9 @@ export const books = {
 
   isbnLookup: (isbn: string) =>
     api.post('/books/isbn-lookup', { isbn }).then(r => r.data),
+
+  enrich: (id: number) =>
+    api.post<Book>(`/books/${id}/enrich`).then(r => r.data),
 }
 
 export const search = {

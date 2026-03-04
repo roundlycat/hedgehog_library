@@ -27,7 +27,10 @@ Usage with Claude Desktop — add to claude_desktop_config.json:
 import asyncio
 import os
 import sys
+import json
 from typing import Optional
+from pathlib import Path
+from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -35,6 +38,26 @@ import httpx
 from fastmcp import FastMCP
 
 API_BASE = os.environ.get("HEDGEHOG_API_URL", "http://localhost:8000")
+KANBAN_FILE = os.environ.get(
+    "HEDGEHOG_KANBAN_FILE",
+    str(Path(__file__).parent / "kanban.json")
+)
+
+
+# ── Kanban board helpers ──────────────────────────────────────────────────────
+def _load_kanban() -> dict:
+    """Load kanban board from JSON file, creating it if absent."""
+    path = Path(KANBAN_FILE)
+    if not path.exists():
+        default = {"columns": ["todo", "reading", "done"], "cards": []}
+        path.write_text(json.dumps(default, indent=2))
+        return default
+    return json.loads(path.read_text())
+
+
+def _save_kanban(data: dict) -> None:
+    """Save kanban board to JSON file."""
+    Path(KANBAN_FILE).write_text(json.dumps(data, indent=2))
 
 mcp = FastMCP("Hedgehog Library", instructions="""\
 You have access to Sean's personal library catalog — 200+ books across 27 physical shelves.
@@ -415,11 +438,23 @@ async def add_book_recommendation(
             return f"Failed to add recommendation: {resp.text}"
         book = resp.json()
 
+        # Auto-enrich the recommendation for tags/categorization (async, don't wait)
+        try:
+            enrich_resp = await client.post(
+                f"{API_BASE}/api/books/{book['id']}/enrich",
+                timeout=20,
+            )
+            if enrich_resp.status_code == 200:
+                book = enrich_resp.json()
+        except Exception:
+            pass  # Enrichment is optional; don't fail if it errors
+
     type_str = "article" if source_type == "journal_article" else "book"
+    tags_str = f"\n🏷  {book.get('tags')}" if book.get("tags") else ""
     return (
         f"✓ Added {type_str} recommendation\n"
         f"**{book['title']}**\n"
-        f"ID: {book['id']} (save this to reference later)\n"
+        f"ID: {book['id']}{tags_str}\n"
         f"Recommended by: {recommended_by}\n"
         f"Status: to_read"
     )
@@ -534,6 +569,112 @@ async def get_recommendations() -> str:
                 lines.append(f"     💭 {b['notes']}")
 
     return "\n".join(lines)
+
+
+# ── 11. Kanban board: Get board ────────────────────────────────────────────────
+@mcp.tool()
+async def get_kanban() -> str:
+    """
+    Display the kanban board with all task cards grouped by column.
+    Shows To Do, Reading, and Done columns for tracking book progress.
+
+    Returns:
+        Formatted kanban board with card titles and notes.
+    """
+    board = _load_kanban()
+    lines = ["📋 Kanban Board\n"]
+
+    for col in board.get("columns", ["todo", "reading", "done"]):
+        label = {"todo": "To Do", "reading": "Reading", "done": "Done"}.get(col, col)
+        cards = [c for c in board.get("cards", []) if c.get("column") == col]
+        lines.append(f"**{label}** ({len(cards)})")
+
+        if not cards:
+            lines.append("  (empty)")
+        else:
+            for card in cards:
+                lines.append(f"  [{card['id']}] {card['title']}")
+                if card.get("author"):
+                    lines.append(f"      by {card['author']}")
+                if card.get("notes"):
+                    lines.append(f"      {card['notes']}")
+
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+# ── 12. Kanban board: Add card ─────────────────────────────────────────────────
+@mcp.tool()
+async def add_kanban_card(
+    title: str,
+    column: str = "todo",
+    author: Optional[str] = None,
+    notes: Optional[str] = None,
+    source_type: Optional[str] = None,
+    book_id: Optional[int] = None,
+) -> str:
+    """
+    Add a new card to the kanban board.
+
+    Args:
+        title:       Card title (book/article title)
+        column:      Which column to add to: 'todo', 'reading', or 'done' (default: 'todo')
+        author:      Optional author name
+        notes:       Optional notes on why you're tracking this
+        source_type: Optional 'book' or 'journal_article'
+        book_id:     Optional ID linking back to library book
+
+    Returns:
+        Confirmation with the new card ID.
+    """
+    if column not in ("todo", "reading", "done"):
+        return "column must be 'todo', 'reading', or 'done'"
+
+    board = _load_kanban()
+    card_id = int(datetime.now().timestamp() * 1000) % 1000000
+    card = {
+        "id": card_id,
+        "title": title,
+        "column": column,
+        "author": author,
+        "notes": notes,
+        "source_type": source_type,
+        "book_id": book_id,
+        "created_at": datetime.now().isoformat(),
+    }
+    board["cards"].append(card)
+    _save_kanban(board)
+
+    return f"✓ Added card [{card_id}] **{title}** to {column}"
+
+
+# ── 13. Kanban board: Move card ────────────────────────────────────────────────
+@mcp.tool()
+async def move_kanban_card(card_id: int, to_column: str) -> str:
+    """
+    Move a card to a different column on the kanban board.
+
+    Args:
+        card_id:    The card ID (from get_kanban or add_kanban_card)
+        to_column:  Destination column: 'todo', 'reading', or 'done'
+
+    Returns:
+        Confirmation that the card was moved.
+    """
+    if to_column not in ("todo", "reading", "done"):
+        return "to_column must be 'todo', 'reading', or 'done'"
+
+    board = _load_kanban()
+    card = next((c for c in board["cards"] if c["id"] == card_id), None)
+    if not card:
+        return f"Card {card_id} not found"
+
+    old_col = card["column"]
+    card["column"] = to_column
+    _save_kanban(board)
+
+    return f"✓ Moved **{card['title']}** from {old_col} → {to_column}"
 
 
 if __name__ == "__main__":
