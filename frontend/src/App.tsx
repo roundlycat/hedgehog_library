@@ -11,6 +11,7 @@ import { ShelfPanel } from './components/ShelfPanel'
 import { EnrichmentPanel } from './components/EnrichmentPanel'
 import { ImportPanel } from './components/ImportPanel'
 import { AddBookDialog } from './components/AddBookDialog'
+import { RecommendationDialog } from './components/RecommendationDialog'
 
 // ── Sort & filter ─────────────────────────────────────────────────────────────
 type SortKey = 'title' | 'creator' | 'added' | 'rating'
@@ -140,6 +141,7 @@ export default function App() {
 
   const [selectedBook, setSelectedBook] = useState<Book | null>(null)
   const [showAdd, setShowAdd] = useState(false)
+  const [showRecommend, setShowRecommend] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showStats, setShowStats] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -282,14 +284,24 @@ export default function App() {
             >
               <BarChart2 size={17} />
             </button>
-            <button
-              onClick={() => setShowAdd(true)}
-              className="flex items-center gap-1.5 bg-rust-400 hover:bg-rust-300 text-white px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-150 shadow-sm hover:shadow-md"
-              title="Add book"
-            >
-              <Plus size={15} />
-              <span className="hidden sm:inline">Add</span>
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setShowAdd(true)}
+                className="flex items-center gap-1.5 bg-rust-400 hover:bg-rust-300 text-white px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-150 shadow-sm hover:shadow-md"
+                title="Add book"
+              >
+                <Plus size={15} />
+                <span className="hidden sm:inline">Add</span>
+              </button>
+              <button
+                onClick={() => setShowRecommend(true)}
+                className="flex items-center gap-1.5 bg-moss-400 hover:bg-moss-300 text-white px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-150 shadow-sm hover:shadow-md"
+                title="Add recommendation"
+              >
+                <BookOpen size={15} />
+                <span className="hidden sm:inline">Recommend</span>
+              </button>
+            </div>
             <button
               onClick={() => setShowSettings(v => !v)}
               className={`btn-icon hover:bg-cream-50/10 ${showSettings ? 'text-cream-50 bg-cream-50/15' : 'text-cream-200/70'}`}
@@ -436,6 +448,12 @@ export default function App() {
       {showAdd && (
         <AddBookDialog
           onClose={() => setShowAdd(false)}
+          onAdded={handleBookAdded}
+        />
+      )}
+      {showRecommend && (
+        <RecommendationDialog
+          onClose={() => setShowRecommend(false)}
           onAdded={handleBookAdded}
         />
       )}

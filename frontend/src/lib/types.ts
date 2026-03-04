@@ -20,6 +20,8 @@ export interface Book {
   rating: number | null
   enriched: boolean
   added: string | null
+  source_type: string | null
+  recommended_by: string | null
 }
 
 export interface SearchResult {
