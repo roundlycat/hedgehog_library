@@ -21,6 +21,8 @@ class BookBase(BaseModel):
     shelf: Optional[int] = None
     reading_status: Optional[str] = None
     rating: Optional[int] = None
+    source_type: Optional[str] = None
+    recommended_by: Optional[str] = None
 
 
 class BookCreate(BookBase):

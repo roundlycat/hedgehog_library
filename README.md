@@ -117,6 +117,10 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 | `list_shelves` | "Give me an overview of the library" |
 | `find_books_by_author` | "What do I have by Gadamer?" |
 | `get_book_details` | Details for a specific book ID |
+| `add_book_recommendation` | "Add this fascinating paper on consciousness studies" (auto-saves to "to_read" status) |
+| `get_recommendations` | "Show me my reading recommendations queue" |
+| `rate_book` | "Rate Being and Time 5 stars" |
+| `recommend_unread` | "What unread books do I have on phenomenology?" |
 
 Example Claude conversation:
 > "I want to read something adjacent to Ricoeur's work on narrative — what do I have and where is it?"

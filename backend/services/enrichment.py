@@ -62,24 +62,58 @@ async def enrich_book(title: str, creators: str | None,
 
 
 async def lookup_isbn(isbn: str) -> dict | None:
-    """Look up a book by ISBN via Open Library API (free, no key required)."""
-    import httpx
+    """Look up a book by ISBN — tries Open Library then Google Books."""
     isbn_clean = isbn.replace("-", "").replace(" ", "")
-    url = f"https://openlibrary.org/api/books?bibkeys=ISBN:{isbn_clean}&format=json&jscmd=data"
-    async with httpx.AsyncClient(timeout=10) as client:
-        resp = await client.get(url)
-        if resp.status_code != 200:
-            return None
-        data = resp.json()
-        key = f"ISBN:{isbn_clean}"
-        if key not in data:
-            return None
-        book_data = data[key]
-        return {
-            "title": book_data.get("title"),
-            "creators": ", ".join(a["name"] for a in book_data.get("authors", [])),
-            "publisher": ", ".join(p["name"] for p in book_data.get("publishers", [])),
-            "publish_date": book_data.get("publish_date"),
-            "pages": book_data.get("number_of_pages"),
-            "description": book_data.get("notes") or book_data.get("subtitle"),
-        }
+    result = await _lookup_openlibrary(isbn_clean)
+    if result:
+        return result
+    return await _lookup_google(isbn_clean)
+
+
+async def _lookup_openlibrary(isbn: str) -> dict | None:
+    import httpx
+    url = f"https://openlibrary.org/api/books?bibkeys=ISBN:{isbn}&format=json&jscmd=data"
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url)
+            if resp.status_code != 200:
+                return None
+            data = resp.json()
+            key = f"ISBN:{isbn}"
+            if key not in data:
+                return None
+            book_data = data[key]
+            return {
+                "title": book_data.get("title"),
+                "creators": ", ".join(a["name"] for a in book_data.get("authors", [])),
+                "publisher": ", ".join(p["name"] for p in book_data.get("publishers", [])),
+                "publish_date": book_data.get("publish_date"),
+                "pages": book_data.get("number_of_pages"),
+                "description": book_data.get("notes") or book_data.get("subtitle"),
+            }
+    except Exception:
+        return None
+
+
+async def _lookup_google(isbn: str) -> dict | None:
+    import httpx
+    url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}"
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url)
+            if resp.status_code != 200:
+                return None
+            data = resp.json()
+            if not data.get("items"):
+                return None
+            info = data["items"][0]["volumeInfo"]
+            return {
+                "title": info.get("title"),
+                "creators": ", ".join(info.get("authors", [])),
+                "publisher": info.get("publisher", ""),
+                "publish_date": info.get("publishedDate"),
+                "pages": info.get("pageCount"),
+                "description": (info.get("description") or "")[:500] or None,
+            }
+    except Exception:
+        return None

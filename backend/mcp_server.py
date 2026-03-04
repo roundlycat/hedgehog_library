@@ -42,9 +42,17 @@ The collection spans philosophy (continental & analytic), fiction, science, hist
 Books have rich metadata: shelf location, reading status, tags, time period, philosophical school,
 related authors, and semantic embeddings for natural language search.
 
-When referencing books, always include the shelf number so Sean can find them physically.
-When Sean asks for recommendations, prefer books he hasn't read yet (reading_status = 'unread').
-Use search_books for conceptual/thematic queries and find_books_by_author for author lookups.
+RECOMMENDATION WORKFLOW:
+- When you find something interesting (book or journal article), use add_book_recommendation()
+- Include notes on why it's relevant
+- Mark it source_type='journal_article' if it's an article/paper, else 'book'
+- These are saved with reading_status='to_read' for Sean to review later
+- Call get_recommendations() to see all pending recommendations
+
+GENERAL USAGE:
+- Always include shelf numbers when referencing books so Sean can find them physically
+- When recommending, prefer books he hasn't read yet (reading_status = 'unread')
+- Use search_books for conceptual/thematic queries and find_books_by_author for author lookups
 """)
 
 
@@ -357,7 +365,67 @@ async def rate_book(book_id: int, rating: int, status: Optional[str] = None) -> 
     )
 
 
-# ── 8. Unread recommendations ──────────────────────────────────────────────────
+# ── 8. Add book recommendation ────────────────────────────────────────────────
+@mcp.tool()
+async def add_book_recommendation(
+    title: str,
+    creators: Optional[str] = None,
+    description: Optional[str] = None,
+    notes: Optional[str] = None,
+    source_type: str = "book",
+    recommended_by: str = "Claude",
+) -> str:
+    """
+    Add a recommended book or journal article to the library.
+    Creates it with reading_status='to_read' so it shows up in recommendations queue.
+
+    Args:
+        title: Title of the book or article
+        creators: Author(s) name
+        description: Brief description or abstract
+        notes: Personal notes on why you're recommending it
+        source_type: 'book' or 'journal_article' (default: 'book')
+        recommended_by: Who recommended it - 'Claude' or 'Dawn' (default: 'Claude')
+
+    Returns:
+        Confirmation with the new book ID so you can reference it later.
+    """
+    if source_type not in ("book", "journal_article"):
+        return "source_type must be 'book' or 'journal_article'"
+    if recommended_by not in ("Claude", "Dawn"):
+        return "recommended_by must be 'Claude' or 'Dawn'"
+
+    payload = {
+        "title": title,
+        "creators": creators,
+        "description": description,
+        "notes": notes,
+        "reading_status": "to_read",
+        "source_type": source_type,
+        "recommended_by": recommended_by,
+    }
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{API_BASE}/api/books",
+            json=payload,
+            timeout=10,
+        )
+        if resp.status_code != 201:
+            return f"Failed to add recommendation: {resp.text}"
+        book = resp.json()
+
+    type_str = "article" if source_type == "journal_article" else "book"
+    return (
+        f"✓ Added {type_str} recommendation\n"
+        f"**{book['title']}**\n"
+        f"ID: {book['id']} (save this to reference later)\n"
+        f"Recommended by: {recommended_by}\n"
+        f"Status: to_read"
+    )
+
+
+# ── 9. Unread recommendations ──────────────────────────────────────────────────
 @mcp.tool()
 async def recommend_unread(
     topic: Optional[str] = None,
@@ -421,6 +489,49 @@ async def recommend_unread(
             shelf_str = f"Shelf {b['shelf']}" if b.get("shelf") else "Unassigned"
             period    = f" [{b['time_period']}]" if b.get("time_period") else ""
             lines.append(f"• **{b['title']}** — {b.get('creators', '?')}  📍 {shelf_str}{period}")
+
+    return "\n".join(lines)
+
+
+# ── 10. View recommendations ────────────────────────────────────────────────
+@mcp.tool()
+async def get_recommendations() -> str:
+    """
+    View all items marked as 'to_read' (pending recommendations to add to library).
+    Shows recently added recommendations with who suggested them.
+    """
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"{API_BASE}/api/books",
+            params={"status": "to_read", "limit": 100},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+    books = data["books"]
+    if not books:
+        return "No pending recommendations. You're all caught up! 📚"
+
+    lines = [f"📋 Recommendations to review ({len(books)} pending):\n"]
+
+    # Group by recommended_by
+    by_source = {}
+    for b in books:
+        source = b.get("recommended_by", "Unknown")
+        if source not in by_source:
+            by_source[source] = []
+        by_source[source].append(b)
+
+    for source in sorted(by_source.keys()):
+        lines.append(f"\n**From {source}:**")
+        for b in by_source[source]:
+            type_emoji = "📄" if b.get("source_type") == "journal_article" else "📖"
+            lines.append(f"  {type_emoji} **{b['title']}** (ID: {b['id']})")
+            if b.get("creators"):
+                lines.append(f"     {b['creators']}")
+            if b.get("notes"):
+                lines.append(f"     💭 {b['notes']}")
 
     return "\n".join(lines)
 

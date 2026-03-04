@@ -26,8 +26,10 @@ class Book(Base):
     philosophical_school: Mapped[Optional[str]] = mapped_column(String(200))
     notes: Mapped[Optional[str]] = mapped_column(Text)
     shelf: Mapped[Optional[int]] = mapped_column(Integer)      # 1-27
-    reading_status: Mapped[Optional[str]] = mapped_column(String(50))  # unread/reading/read
+    reading_status: Mapped[Optional[str]] = mapped_column(String(50))  # unread/reading/read/to_read
     rating: Mapped[Optional[int]] = mapped_column(Integer)
+    source_type: Mapped[Optional[str]] = mapped_column(String(50))  # book/journal_article
+    recommended_by: Mapped[Optional[str]] = mapped_column(String(100))  # Claude/Dawn
     enriched: Mapped[bool] = mapped_column(Boolean, default=False)
     embedding: Mapped[Optional[list]] = mapped_column(Vector(384))
     added: Mapped[Optional[str]] = mapped_column(String(50))

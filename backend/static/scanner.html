@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Hedgehog Library — Scan</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Mono:wght@300;400&display=swap');
+
+  :root {
+    --bg:       #1a1510;
+    --surface:  #231e17;
+    --card:     #2c2519;
+    --border:   #3d3428;
+    --amber:    #c8943a;
+    --amber2:   #e8b96a;
+    --cream:    #f0e6d0;
+    --muted:    #8a7d68;
+    --success:  #6aab7a;
+    --error:    #c06060;
+    --radius:   12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--cream);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.25rem;
+    color: var(--amber2);
+    letter-spacing: 0.01em;
+  }
+
+  header span {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .tab {
+    flex: 1;
+    padding: 12px 8px;
+    text-align: center;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+
+  .tab.active {
+    color: var(--amber2);
+    border-bottom-color: var(--amber);
+  }
+
+  .panel { display: none; flex: 1; flex-direction: column; }
+  .panel.active { display: flex; }
+
+  /* ── Scanner panel ── */
+  #viewport-wrap {
+    position: relative;
+    background: #000;
+    width: 100%;
+    aspect-ratio: 4/3;
+    overflow: hidden;
+  }
+
+  #viewport-wrap video,
+  #viewport-wrap canvas {
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+  }
+
+  #viewport-wrap canvas { opacity: 0; }
+
+  .scan-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .scan-frame {
+    width: 75%;
+    height: 28%;
+    border: 2px solid var(--amber);
+    border-radius: 6px;
+    box-shadow: 0 0 0 2000px rgba(0,0,0,0.45);
+    position: relative;
+  }
+
+  .scan-line {
+    position: absolute;
+    left: 4px; right: 4px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--amber2), transparent);
+    animation: scanline 2s ease-in-out infinite;
+    top: 50%;
+  }
+
+  @keyframes scanline {
+    0%, 100% { top: 10%; opacity: 0.3; }
+    50% { top: 90%; opacity: 1; }
+  }
+
+  .corner {
+    position: absolute;
+    width: 14px; height: 14px;
+    border-color: var(--amber2);
+    border-style: solid;
+  }
+  .corner.tl { top: -2px; left: -2px; border-width: 3px 0 0 3px; }
+  .corner.tr { top: -2px; right: -2px; border-width: 3px 3px 0 0; }
+  .corner.bl { bottom: -2px; left: -2px; border-width: 0 0 3px 3px; }
+  .corner.br { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; }
+
+  .scan-controls {
+    padding: 12px 16px;
+    display: flex;
+    gap: 10px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--cream);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn:active { transform: scale(0.97); }
+
+  .btn.primary {
+    background: var(--amber);
+    border-color: var(--amber);
+    color: var(--bg);
+    font-weight: 600;
+  }
+
+  .btn.danger {
+    border-color: var(--error);
+    color: var(--error);
+  }
+
+  /* ── ISBN manual input ── */
+  .isbn-row {
+    padding: 12px 16px;
+    display: flex;
+    gap: 8px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .isbn-row input {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    color: var(--cream);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .isbn-row input:focus { border-color: var(--amber); }
+  .isbn-row input::placeholder { color: var(--muted); }
+
+  /* ── Result card ── */
+  #result-area {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+  }
+
+  .book-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+    animation: slideUp 0.2s ease;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .book-card.success { border-color: var(--success); }
+  .book-card.error   { border-color: var(--error); }
+  .book-card.pending { border-color: var(--amber); }
+
+  .book-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    color: var(--amber2);
+    line-height: 1.35;
+    margin-bottom: 4px;
+  }
+
+  .book-author {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-bottom: 10px;
+    letter-spacing: 0.04em;
+  }
+
+  .book-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .tag {
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .tag.isbn { color: var(--amber); border-color: var(--amber); }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.65rem;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .status-badge.added    { background: rgba(106,171,122,0.15); color: var(--success); border: 1px solid var(--success); }
+  .status-badge.exists   { background: rgba(200,148,58,0.15);  color: var(--amber);   border: 1px solid var(--amber); }
+  .status-badge.notfound { background: rgba(192,96,96,0.15);   color: var(--error);   border: 1px solid var(--error); }
+  .status-badge.loading  { background: rgba(200,148,58,0.1);   color: var(--muted);   border: 1px solid var(--border); }
+
+  .card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .shelf-input {
+    width: 72px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 10px;
+    color: var(--cream);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    text-align: center;
+    outline: none;
+  }
+  .shelf-input:focus { border-color: var(--amber); }
+
+  /* ── History panel ── */
+  #history-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+  }
+
+  .hist-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hist-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .hist-dot.added    { background: var(--success); }
+  .hist-dot.exists   { background: var(--amber); }
+  .hist-dot.notfound { background: var(--error); }
+
+  .hist-title {
+    font-size: 0.78rem;
+    color: var(--cream);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hist-shelf {
+    font-size: 0.68rem;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .hist-empty {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.75rem;
+    padding: 40px 0;
+    letter-spacing: 0.06em;
+  }
+
+  /* ── Stats bar ── */
+  .stats-bar {
+    display: flex;
+    padding: 10px 16px;
+    gap: 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    font-size: 0.68rem;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+  }
+
+  .stat { display: flex; align-items: center; gap: 5px; }
+  .stat-val { color: var(--amber2); font-weight: 600; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed;
+    bottom: 70px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 0.72rem;
+    color: var(--cream);
+    letter-spacing: 0.04em;
+    opacity: 0;
+    transition: all 0.2s;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 100;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Spinner ── */
+  .spinner {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border: 2px solid var(--border);
+    border-top-color: var(--amber);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Hedgehog Library</h1>
+  <span>Book Scanner</span>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('scan')">Scan</div>
+  <div class="tab" onclick="switchTab('history')">History</div>
+</div>
+
+<!-- SCAN PANEL -->
+<div class="panel active" id="panel-scan">
+  <div id="viewport-wrap">
+    <div id="viewport"></div>
+    <div class="scan-overlay">
+      <div class="scan-frame">
+        <div class="corner tl"></div>
+        <div class="corner tr"></div>
+        <div class="corner bl"></div>
+        <div class="corner br"></div>
+        <div class="scan-line"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scan-controls">
+    <button class="btn primary" id="btn-start" onclick="startScanner()">Start Camera</button>
+    <button class="btn danger" id="btn-stop" onclick="stopScanner()" style="display:none">Stop</button>
+  </div>
+
+  <div class="isbn-row">
+    <input type="number" id="isbn-manual" placeholder="Enter ISBN manually…" inputmode="numeric">
+    <button class="btn primary" onclick="lookupManual()" style="flex:0;padding:10px 16px">→</button>
+  </div>
+
+  <div id="result-area">
+    <div style="text-align:center;color:var(--muted);font-size:0.75rem;padding:30px 0;letter-spacing:0.06em;">
+      Point camera at barcode or enter ISBN above
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY PANEL -->
+<div class="panel" id="panel-history">
+  <div id="history-list">
+    <div class="hist-empty">No scans yet this session</div>
+  </div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat">Added <span class="stat-val" id="stat-added">0</span></div>
+  <div class="stat">Already in DB <span class="stat-val" id="stat-exists">0</span></div>
+  <div class="stat">Not found <span class="stat-val" id="stat-notfound">0</span></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+// Change this to your Windows IP if scanning from phone on same network
+const API = window.location.hostname === 'localhost'
+  ? 'http://localhost:8002'
+  : `http://${window.location.hostname}:8002`;
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let scanning = false;
+let lastCode = null;
+let lastCodeTime = 0;
+const DEBOUNCE_MS = 3000;
+
+const history = [];
+const stats = { added: 0, exists: 0, notfound: 0 };
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['scan','history'][i] === name);
+  });
+  document.querySelectorAll('.panel').forEach((p, i) => {
+    p.classList.toggle('active', ['panel-scan','panel-history'][i] === `panel-${name}`);
+  });
+  if (name === 'history') renderHistory();
+}
+
+// ── Scanner ───────────────────────────────────────────────────────────────────
+function startScanner() {
+  scanning = true;
+  document.getElementById('btn-start').style.display = 'none';
+  document.getElementById('btn-stop').style.display = '';
+
+  Quagga.init({
+    inputStream: {
+      type: 'LiveStream',
+      target: document.getElementById('viewport'),
+      constraints: {
+        facingMode: 'environment',
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+    },
+    decoder: {
+      readers: ['ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader'],
+    },
+    locate: true,
+    numOfWorkers: 2,
+    frequency: 10,
+  }, err => {
+    if (err) { toast('Camera error: ' + err.message); stopScanner(); return; }
+    Quagga.start();
+  });
+
+  Quagga.onDetected(result => {
+    const code = result.codeResult.code;
+    const now = Date.now();
+    if (code === lastCode && now - lastCodeTime < DEBOUNCE_MS) return;
+    lastCode = code;
+    lastCodeTime = now;
+    navigator.vibrate && navigator.vibrate(40);
+    lookupISBN(code);
+  });
+}
+
+function stopScanner() {
+  scanning = false;
+  Quagga.stop();
+  document.getElementById('btn-start').style.display = '';
+  document.getElementById('btn-stop').style.display = 'none';
+}
+
+// ── Manual ISBN ───────────────────────────────────────────────────────────────
+function lookupManual() {
+  const val = document.getElementById('isbn-manual').value.trim();
+  if (!val) return;
+  lookupISBN(val);
+  document.getElementById('isbn-manual').value = '';
+}
+
+document.getElementById('isbn-manual').addEventListener('keydown', e => {
+  if (e.key === 'Enter') lookupManual();
+});
+
+// ── Lookup & add ──────────────────────────────────────────────────────────────
+async function lookupISBN(isbn) {
+  const cardId = 'card-' + Date.now();
+  showPendingCard(cardId, isbn);
+
+  try {
+    // 1. Check if already in library
+    const listResp = await fetch(`${API}/api/books?limit=1000`);
+    const listData = await listResp.json();
+    const existing = listData.books.find(b => b.isbn13 === isbn || b.isbn10 === isbn);
+
+    if (existing) {
+      updateCard(cardId, 'exists', existing, isbn);
+      addHistory('exists', existing.title, existing.shelf);
+      stats.exists++;
+      updateStats();
+      return;
+    }
+
+    // 2. Look up via Open Library
+    const lookupResp = await fetch(`${API}/api/books/isbn-lookup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isbn }),
+    });
+
+    if (!lookupResp.ok) {
+      updateCard(cardId, 'notfound', null, isbn);
+      addHistory('notfound', `ISBN ${isbn}`, null);
+      stats.notfound++;
+      updateStats();
+      return;
+    }
+
+    const bookData = await lookupResp.json();
+
+    // 3. Add to library
+    const addResp = await fetch(`${API}/api/books`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: bookData.title,
+        creators: bookData.creators,
+        isbn13: isbn.length === 13 ? isbn : null,
+        isbn10: isbn.length === 10 ? isbn : null,
+        description: bookData.description,
+        publisher: bookData.publisher,
+        publish_date: bookData.publish_date,
+        pages: bookData.pages,
+        reading_status: 'unread',
+      }),
+    });
+
+    if (!addResp.ok) throw new Error('Add failed');
+    const added = await addResp.json();
+    updateCard(cardId, 'added', added, isbn);
+    addHistory('added', added.title, null);
+    stats.added++;
+    updateStats();
+
+  } catch (err) {
+    updateCard(cardId, 'notfound', null, isbn);
+    addHistory('notfound', `ISBN ${isbn}`, null);
+    stats.notfound++;
+    updateStats();
+  }
+}
+
+// ── Card rendering ────────────────────────────────────────────────────────────
+function showPendingCard(id, isbn) {
+  const area = document.getElementById('result-area');
+  // Clear placeholder
+  if (area.querySelector('[style]')) area.innerHTML = '';
+
+  const card = document.createElement('div');
+  card.className = 'book-card pending';
+  card.id = id;
+  card.innerHTML = `
+    <div class="book-title"><span class="spinner"></span> Looking up ISBN ${isbn}…</div>
+  `;
+  area.insertBefore(card, area.firstChild);
+}
+
+function updateCard(id, status, book, isbn) {
+  const card = document.getElementById(id);
+  if (!card) return;
+  card.className = `book-card ${status === 'added' ? 'success' : status === 'exists' ? '' : 'error'}`;
+
+  if (status === 'notfound') {
+    card.innerHTML = `
+      <div class="book-title" style="color:var(--muted)">Not found</div>
+      <div class="book-author">ISBN: ${isbn}</div>
+      <span class="status-badge notfound">✕ Not in Open Library</span>
+    `;
+    return;
+  }
+
+  const statusLabel = status === 'added'
+    ? '<span class="status-badge added">✓ Added to library</span>'
+    : '<span class="status-badge exists">Already in library</span>';
+
+  const shelfInfo = book.shelf
+    ? `<span class="tag">Shelf ${book.shelf}</span>` : '';
+
+  const pagesInfo = book.pages
+    ? `<span class="tag">${book.pages} pp</span>` : '';
+
+  const shelfAction = status === 'added' ? `
+    <div class="card-actions">
+      <input class="shelf-input" type="number" min="1" max="27" placeholder="Shelf #"
+             id="shelf-${book.id}" onkeydown="if(event.key==='Enter')assignShelf(${book.id})">
+      <button class="btn" style="flex:0;padding:8px 14px" onclick="assignShelf(${book.id})">Assign shelf</button>
+    </div>` : '';
+
+  card.innerHTML = `
+    <div class="book-title">${book.title}</div>
+    <div class="book-author">${book.creators || '—'}</div>
+    <div class="book-meta">
+      ${statusLabel}
+      ${shelfInfo}
+      ${pagesInfo}
+      <span class="tag isbn">${isbn}</span>
+    </div>
+    ${shelfAction}
+  `;
+}
+
+async function assignShelf(bookId) {
+  const input = document.getElementById(`shelf-${bookId}`);
+  const shelf = parseInt(input.value);
+  if (!shelf || shelf < 1 || shelf > 27) { toast('Shelf must be 1–27'); return; }
+
+  const resp = await fetch(`${API}/api/books/${bookId}/shelf`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ shelf }),
+  });
+
+  if (resp.ok) {
+    input.parentElement.innerHTML = `<span class="status-badge added">📚 Shelved at ${shelf}</span>`;
+    toast(`Assigned to shelf ${shelf}`);
+    // Update history
+    const entry = history.find(h => h.title && h.bookId === bookId);
+    if (entry) entry.shelf = shelf;
+  } else {
+    toast('Shelf assignment failed');
+  }
+}
+
+// ── History ───────────────────────────────────────────────────────────────────
+function addHistory(status, title, shelf) {
+  history.unshift({ status, title, shelf, time: new Date() });
+}
+
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  if (!history.length) {
+    list.innerHTML = '<div class="hist-empty">No scans yet this session</div>';
+    return;
+  }
+  list.innerHTML = history.map(h => `
+    <div class="hist-item">
+      <div class="hist-dot ${h.status}"></div>
+      <div class="hist-title">${h.title}</div>
+      <div class="hist-shelf">${h.shelf ? `Shelf ${h.shelf}` : '—'}</div>
+    </div>
+  `).join('');
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+function updateStats() {
+  document.getElementById('stat-added').textContent    = stats.added;
+  document.getElementById('stat-exists').textContent   = stats.exists;
+  document.getElementById('stat-notfound').textContent = stats.notfound;
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>

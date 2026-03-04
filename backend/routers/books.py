@@ -101,7 +101,7 @@ async def assign_shelf(book_id: int, data: ShelfAssignRequest, db: AsyncSession 
     return book
 
 
-@router.post("/isbn-lookup", response_model=BookResponse | None)
+@router.post("/isbn-lookup")
 async def isbn_lookup(data: ISBNLookupRequest, db: AsyncSession = Depends(get_db)):
     """Look up a book by ISBN via Open Library - used by manual add flow."""
     book_data = await lookup_isbn(data.isbn)
