@@ -116,8 +116,8 @@ function StatusChips({ filter, onChange }: { filter: StatusFilter; onChange: (s:
           key={c.key}
           onClick={() => onChange(c.key === filter ? 'all' : c.key)}
           className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150 ${filter === c.key
-              ? 'bg-bark-800 text-cream-50'
-              : 'bg-cream-200 text-bark-600 hover:bg-cream-300'
+            ? 'bg-bark-800 text-cream-50'
+            : 'bg-cream-200 text-bark-600 hover:bg-cream-300'
             }`}
         >
           {c.label}
@@ -158,15 +158,19 @@ export default function App() {
         status: statusFilter === 'all' ? undefined : statusFilter,
         limit: 500,
       })
-      setBooks(data.books)
-      setTotal(data.total)
+      if (data && Array.isArray(data.books)) {
+        setBooks(data.books)
+        setTotal(data.total ?? 0)
+      }
+    } catch (err) {
+      console.warn('Could not load books (backend may be offline):', err)
     } finally {
       setLoading(false)
     }
   }, [activeShelf, statusFilter])
 
-  const loadShelves = async () => { const d = await shelvesApi.list(); setShelvesMeta(d) }
-  const loadEnrichStatus = async () => { const d = await enrichApi.status(); setEnrichStatus(d) }
+  const loadShelves = async () => { try { const d = await shelvesApi.list(); if (d && Array.isArray(d.shelves)) setShelvesMeta(d) } catch (e) { console.warn('Shelves unavailable:', e) } }
+  const loadEnrichStatus = async () => { try { const d = await enrichApi.status(); if (d && typeof d === 'object' && 'total' in d) setEnrichStatus(d) } catch (e) { console.warn('Enrich status unavailable:', e) } }
 
   useEffect(() => { loadBooks() }, [loadBooks])
   useEffect(() => { loadShelves(); loadEnrichStatus() }, [])
@@ -177,7 +181,11 @@ export default function App() {
     setSearching(true)
     try {
       const data = await searchApi.semantic(q, 30, activeShelf ?? undefined)
-      setSearchResults(data.results)
+      if (data && Array.isArray(data.results)) {
+        setSearchResults(data.results)
+      }
+    } catch (err) {
+      console.warn('Search failed:', err)
     } finally {
       setSearching(false)
     }
