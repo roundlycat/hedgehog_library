@@ -27,10 +27,10 @@ async def semantic_search(
 
     if shelf is not None:
         sql = text("""
-            SELECT id, 1 - (embedding <=> :embedding::vector) AS score
+            SELECT id, 1 - (embedding <=> CAST(:embedding AS vector)) AS score
             FROM books
             WHERE embedding IS NOT NULL AND shelf = :shelf
-            ORDER BY embedding <=> :embedding::vector
+            ORDER BY embedding <=> CAST(:embedding AS vector)
             LIMIT :limit
         """)
         rows = (await db.execute(sql, {
@@ -38,10 +38,10 @@ async def semantic_search(
         })).fetchall()
     else:
         sql = text("""
-            SELECT id, 1 - (embedding <=> :embedding::vector) AS score
+            SELECT id, 1 - (embedding <=> CAST(:embedding AS vector)) AS score
             FROM books
             WHERE embedding IS NOT NULL
-            ORDER BY embedding <=> :embedding::vector
+            ORDER BY embedding <=> CAST(:embedding AS vector)
             LIMIT :limit
         """)
         rows = (await db.execute(sql, {
