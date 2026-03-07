@@ -188,10 +188,10 @@ async def import_csv(file: UploadFile = File(...), db: AsyncSession = Depends(ge
                 added=row.get("added", "").strip() or None,
             )
 
-            embedding = await generate_book_embedding(
-                book.title, book.creators, book.description
-            )
-            book.embedding = embedding
+            # Skip generating embeddings during bulk import to avoid Render 512MB RAM OOM / timeouts.
+            # Books will be marked as enriched=False, and the UI's Enrichment Panel will
+            # stream them asynchronously, doing a db.commit() after each book.
+            book.enriched = False
             db.add(book)
             imported += 1
 
