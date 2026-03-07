@@ -1,11 +1,10 @@
 import { useState } from 'react'
-import { X, Search, Plus, Loader2, CheckCircle } from 'lucide-react'
+import { X, Search, Plus, Loader2, CheckCircle, Scan } from 'lucide-react'
 import type { Book } from '../lib/types'
 import { books as booksApi } from '../lib/api'
 import { BookCover } from './BookCover'
 import { toastSuccess, toastError } from '../lib/toast'
 import { BarcodeScanner as ScannerDialog } from './ScannerDialog'
-import { Scan } from 'lucide-react'
 
 interface Props {
   onClose: () => void
@@ -46,7 +45,6 @@ export function AddBookDialog({ onClose, onAdded }: Props) {
   }
 
   const handleScan = (scannedIsbn: string) => {
-    setScanning(false)
     setIsbn(scannedIsbn)
     performLookup(scannedIsbn.replace(/[-\s]/g, '').trim())
   }
@@ -57,8 +55,13 @@ export function AddBookDialog({ onClose, onAdded }: Props) {
     try {
       const book = await booksApi.create({ ...found, isbn13: isbn.replace(/[-\s]/g, '') })
       onAdded(book)
-      onClose()
       toastSuccess(`"${found.title}" added to library`)
+      if (scanning) {
+        setFound(null);
+        setIsbn('');
+      } else {
+        onClose();
+      }
     } catch (err: any) {
       if (err.response?.status === 409 || err.response?.data?.detail) {
         toastError(err.response?.data?.detail || 'This book is already in your library');
@@ -139,7 +142,7 @@ export function AddBookDialog({ onClose, onAdded }: Props) {
                     autoFocus
                   />
                   <button
-                    onClick={() => setScanning(true)}
+                    onClick={() => { setScanning(true); setError(''); setFound(null); }}
                     type="button"
                     className="absolute right-[54px] top-1/2 -translate-y-1/2 text-bark-500 hover:text-moss-600 transition-colors p-1"
                     title="Scan Barcode"
@@ -241,11 +244,77 @@ export function AddBookDialog({ onClose, onAdded }: Props) {
           </div>
         </div>
       </div>
+
       {scanning && (
         <ScannerDialog
           onScan={handleScan}
-          onClose={() => setScanning(false)}
-        />
+          onClose={() => { setScanning(false); setFound(null); setError(''); }}
+          paused={looking || !!found || !!error}
+        >
+          {looking && (
+            <div className="card p-4 flex items-center justify-center gap-3 bg-cream-50">
+              <Loader2 className="animate-spin text-moss-500" size={20} />
+              <p className="font-medium text-bark-900">Looking up book...</p>
+            </div>
+          )}
+
+          {error && (
+            <div className="card p-4 bg-cream-50">
+              <p className="text-sm text-rust-500 mb-3">{error}</p>
+              <button
+                onClick={() => { setError(''); setIsbn(''); }}
+                className="btn-primary w-full gap-2"
+              >
+                <Scan size={14} /> Scan Again
+              </button>
+            </div>
+          )}
+
+          {found && (
+            <div className="card p-4 space-y-3 bg-cream-50 border-moss-500/20">
+              <div className="flex gap-3">
+                {found.isbn13 && (
+                  <BookCover
+                    book={{ ...found, id: 0, enriched: false } as Book}
+                    size="md"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-serif font-semibold text-bark-900 text-sm leading-tight">
+                    {found.title}
+                  </p>
+                  {found.creators && (
+                    <p className="text-xs text-bark-500 mt-0.5">{found.creators}</p>
+                  )}
+                  {found.publisher && (
+                    <p className="text-xs text-bark-400 mt-1">
+                      {found.publisher}
+                      {found.publish_date && ` · ${found.publish_date}`}
+                    </p>
+                  )}
+                </div>
+                <CheckCircle size={18} className="text-moss-500 flex-shrink-0 mt-0.5" />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setFound(null); setIsbn(''); }}
+                  disabled={saving}
+                  className="btn-ghost flex-1 justify-center"
+                >
+                  Discard
+                </button>
+                <button
+                  onClick={handleAddFound}
+                  disabled={saving}
+                  className="btn-primary flex-1 justify-center gap-2"
+                >
+                  <Plus size={14} />
+                  {saving ? 'Adding…' : 'Add Book'}
+                </button>
+              </div>
+            </div>
+          )}
+        </ScannerDialog>
       )}
     </>
   )

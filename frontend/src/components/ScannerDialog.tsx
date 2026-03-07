@@ -1,16 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
-import { Camera, X, Loader2 } from 'lucide-react';
+import { Camera, X, Loader2, Scan } from 'lucide-react';
 
 interface Props {
     onScan: (barcode: string) => void;
     onClose: () => void;
+    paused?: boolean;
+    children?: React.ReactNode;
 }
 
-export function BarcodeScanner({ onScan, onClose }: Props) {
+export function BarcodeScanner({ onScan, onClose, paused, children }: Props) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [error, setError] = useState<string>('');
     const [initializing, setInitializing] = useState(true);
+    const pausedRef = useRef(paused);
+
+    useEffect(() => {
+        pausedRef.current = paused;
+    }, [paused]);
 
     useEffect(() => {
         let codeReader: BrowserMultiFormatReader | null = new BrowserMultiFormatReader();
@@ -43,11 +50,11 @@ export function BarcodeScanner({ onScan, onClose }: Props) {
                     selectedDeviceId,
                     videoRef.current,
                     (result, err) => {
-                        if (result && isStreamActive) {
+                        if (result && isStreamActive && !pausedRef.current) {
                             // Successfully decoded
                             const text = result.getText();
-                            // Prevent multiple scans of the same code rapidly
-                            isStreamActive = false;
+                            // Pause locally immediately to prevent multiple scans in same millisecond
+                            pausedRef.current = true;
                             onScan(text);
                         }
                         if (err && !(err instanceof NotFoundException)) {
@@ -75,8 +82,8 @@ export function BarcodeScanner({ onScan, onClose }: Props) {
     }, [onScan]);
 
     return (
-        <div className="fixed inset-0 bg-bark-900/90 z-[60] flex flex-col items-center justify-center p-4">
-            <div className="relative w-full max-w-md bg-black rounded-2xl overflow-hidden aspect-[4/3] shadow-2xl flex items-center justify-center">
+        <div className="fixed inset-0 bg-bark-900/90 z-[60] flex flex-col items-center justify-center p-4 sm:p-6 overflow-y-auto">
+            <div className="relative w-full max-w-md bg-black rounded-2xl overflow-hidden aspect-[4/3] shadow-2xl flex items-center justify-center flex-shrink-0">
 
                 {initializing && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-cream-50 z-10 bg-bark-900">
@@ -94,7 +101,7 @@ export function BarcodeScanner({ onScan, onClose }: Props) {
                 ) : (
                     <video
                         ref={videoRef}
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full object-cover transition-opacity duration-300 ${paused ? 'opacity-40 blur-sm' : 'opacity-100'}`}
                         autoPlay
                         playsInline
                         muted
@@ -103,7 +110,7 @@ export function BarcodeScanner({ onScan, onClose }: Props) {
 
                 {/* Scanning Reticle overlay */}
                 {!error && !initializing && (
-                    <div className="absolute inset-0 pointer-events-none flex flex-col">
+                    <div className={`absolute inset-0 pointer-events-none flex flex-col transition-opacity duration-300 ${paused ? 'opacity-0' : 'opacity-100'}`}>
                         <div className="flex-1 bg-black/40" />
                         <div className="flex h-48">
                             <div className="flex-1 bg-black/40" />
@@ -117,7 +124,17 @@ export function BarcodeScanner({ onScan, onClose }: Props) {
                             <div className="flex-1 bg-black/40" />
                         </div>
                         <div className="flex-1 bg-black/40 pb-10 flex items-end justify-center">
-                            <p className="text-cream-50/80 font-medium text-sm">Align barcode within frame</p>
+                            <p className="text-cream-50/80 font-medium text-sm flex items-center gap-2">
+                                <Scan size={14} /> Align barcode within frame
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {paused && !initializing && !error && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="bg-bark-900/80 text-cream-50 px-4 py-2 rounded-full text-sm font-medium backdrop-blur-md">
+                            Paused
                         </div>
                     </div>
                 )}
@@ -129,6 +146,13 @@ export function BarcodeScanner({ onScan, onClose }: Props) {
                     <X size={20} />
                 </button>
             </div>
+
+            {/* Children container for UI outside the camera box (like the parsed book card) */}
+            {children && (
+                <div className="w-full max-w-md mt-4 animate-slide-up flex-shrink-0">
+                    {children}
+                </div>
+            )}
         </div>
     );
 }
