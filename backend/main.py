@@ -13,9 +13,6 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
     await init_db()
-    # Pre-warm the embedding model
-    from services.embeddings import get_model
-    get_model()
     yield
 
 
