@@ -1,7 +1,8 @@
 import axios from 'axios'
 import type { Book, BookListResponse, SearchResponse, ShelvesResponse, EnrichStatus } from './types'
 
-const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || '/api' })
+const BASE_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api'
+const api = axios.create({ baseURL: BASE_URL })
 
 export const books = {
   list: (params?: { shelf?: number; status?: string; search?: string; skip?: number; limit?: number }) =>
@@ -60,7 +61,7 @@ export const enrichment = {
   // Returns an EventSource for streaming progress
   streamEnrich: (bookIds?: number[], force = false): EventSource => {
     // POST to get an SSE stream - we use fetch + ReadableStream
-    const basePath = import.meta.env.VITE_API_URL || '/api'
+    const basePath = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api'
     return new EventSource(`${basePath}/enrich/stream`)
   },
 
@@ -69,7 +70,7 @@ export const enrichment = {
     bookIds?: number[],
     force = false
   ) => {
-    const basePath = import.meta.env.VITE_API_URL || '/api'
+    const basePath = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api'
     const response = await fetch(`${basePath}/enrich/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
