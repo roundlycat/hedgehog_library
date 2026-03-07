@@ -59,8 +59,12 @@ export function AddBookDialog({ onClose, onAdded }: Props) {
       onAdded(book)
       onClose()
       toastSuccess(`"${found.title}" added to library`)
-    } catch {
-      toastError('Failed to save book')
+    } catch (err: any) {
+      if (err.response?.status === 409 || err.response?.data?.detail) {
+        toastError(err.response?.data?.detail || 'This book is already in your library');
+      } else {
+        toastError('Failed to save book')
+      }
     } finally {
       setSaving(false)
     }
@@ -78,8 +82,12 @@ export function AddBookDialog({ onClose, onAdded }: Props) {
       onAdded(book)
       onClose()
       toastSuccess(`"${title}" added to library`)
-    } catch {
-      toastError('Failed to save book')
+    } catch (err: any) {
+      if (err.response?.status === 409 || err.response?.data?.detail) {
+        toastError(err.response?.data?.detail || 'This book is already in your library');
+      } else {
+        toastError('Failed to save book')
+      }
     } finally {
       setSaving(false)
     }

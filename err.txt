@@ -1,0 +1,66 @@
+Note: Unnecessary use of -X or --request, POST is already inferred.
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+
+  0      0   0      0   0      0      0      0                              0* Host hedgehog-library.onrender.com:443 was resolved.
+* IPv6: (none)
+* IPv4: 216.24.57.251, 216.24.57.7
+*   Trying 216.24.57.251:443...
+* schannel: disabled automatic use of client certificate
+* ALPN: curl offers http/1.1
+* ALPN: server accepted http/1.1
+* Established connection to hedgehog-library.onrender.com (216.24.57.251 port 443) from 192.168.0.19 port 55821 
+* using HTTP/1.x
+> POST /api/books/import/csv HTTP/1.1
+
+> Host: hedgehog-library.onrender.com
+
+> User-Agent: curl/8.18.0
+
+> Accept: */*
+
+> Origin: https://hedgehog-library.web.app
+
+> Content-Length: 201583
+
+> Content-Type: multipart/form-data; boundary=------------------------lXn4QUtGf99UDVzBIDMEOj
+
+> 
+
+} [16112 bytes data]
+* upload completely sent off: 201583 bytes
+
+100 196.8k   0      0 100 196.8k      0 132.0k   00:01   00:01         132.2k
+100 196.8k   0      0 100 196.8k      0  80783   00:02   00:02          80859* schannel: remote party requests renegotiation
+* schannel: renegotiating SSL/TLS connection
+* schannel: SSL/TLS connection renegotiated
+< HTTP/1.1 502 Bad Gateway
+
+< Date: Sat, 07 Mar 2026 05:54:50 GMT
+
+< Content-Type: text/html; charset=utf-8
+
+< Transfer-Encoding: chunked
+
+< Connection: keep-alive
+
+< CF-RAY: 9d8758f7ffdd57bb-YVR
+
+< rndr-id: 6e83f1e4-2b29-4e68
+
+< x-render-routing: dynamic-paid-error
+
+< cf-cache-status: DYNAMIC
+
+< Server: cloudflare
+
+< alt-svc: h3=":443"; ma=86400
+
+< 
+
+{ [8194 bytes data]
+
+100 414.6k   0 217.8k 100 196.8k  74646  67465   00:02   00:02          80859
+100 414.6k   0 217.8k 100 196.8k  74643  67462   00:02   00:02          80859
+100 414.6k   0 217.8k 100 196.8k  74640  67460   00:02   00:02          80859
+* Connection #0 to host hedgehog-library.onrender.com:443 left intact

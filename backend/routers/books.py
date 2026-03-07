@@ -50,6 +50,12 @@ async def get_book(book_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.post("", response_model=BookResponse, status_code=201)
 async def create_book(data: BookCreate, db: AsyncSession = Depends(get_db)):
+    # Check if a book with this isbn13 already exists
+    if data.isbn13:
+        existing = await db.execute(select(Book).where(Book.isbn13 == data.isbn13))
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=409, detail="Book with this ISBN already exists")
+    
     book = Book(**data.model_dump())
     embedding = await generate_book_embedding(
         book.title, book.creators, book.description,
@@ -57,8 +63,12 @@ async def create_book(data: BookCreate, db: AsyncSession = Depends(get_db)):
     )
     book.embedding = embedding
     db.add(book)
-    await db.flush()
-    await db.refresh(book)
+    try:
+        await db.flush()
+        await db.refresh(book)
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=f"Database error: {str(e)}")
     return book
 
 
