@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from database import init_db, engine
-from routers import books, search, enrichment, shelves
+from routers import books, search, enrichment, shelves, whispers
 
 
 @asynccontextmanager
@@ -35,6 +35,7 @@ app.include_router(books.router)
 app.include_router(search.router)
 app.include_router(enrichment.router)
 app.include_router(shelves.router)
+app.include_router(whispers.router)
 
 
 @app.get("/health")

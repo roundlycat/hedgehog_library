@@ -5,6 +5,15 @@ from sqlalchemy.orm import Mapped, mapped_column
 from pgvector.sqlalchemy import Vector
 from database import Base
 
+class AgentWhisper(Base):
+    __tablename__ = "agent_whispers"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    agent: Mapped[str] = mapped_column(String(200), nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    triggered_by: Mapped[Optional[str]] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
 
 class Book(Base):
     __tablename__ = "books"

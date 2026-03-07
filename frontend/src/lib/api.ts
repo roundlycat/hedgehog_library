@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Book, BookListResponse, SearchResponse, ShelvesResponse, EnrichStatus } from './types'
+import type { Book, BookListResponse, SearchResponse, ShelvesResponse, EnrichStatus, WhisperResponse } from './types'
 
 const BASE_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api'
 const api = axios.create({ baseURL: BASE_URL })
@@ -103,4 +103,9 @@ export interface EnrichProgressEvent {
   title?: string
   status?: 'ok' | 'error'
   message?: string
+}
+
+export const whispers = {
+  latest: () =>
+    api.get<WhisperResponse[]>('/whispers/latest').then(r => r.data),
 }

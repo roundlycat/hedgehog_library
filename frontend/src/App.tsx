@@ -3,8 +3,8 @@ import {
   Search, Plus, Settings, BookOpen, X, SlidersHorizontal,
   Library, BarChart2, ChevronDown, Check, ArrowUpDown
 } from 'lucide-react'
-import type { Book, ShelvesResponse, EnrichStatus, SearchResult } from './lib/types'
-import { books as booksApi, search as searchApi, shelves as shelvesApi, enrichment as enrichApi } from './lib/api'
+import type { Book, ShelvesResponse, EnrichStatus, SearchResult, WhisperResponse } from './lib/types'
+import { books as booksApi, search as searchApi, shelves as shelvesApi, enrichment as enrichApi, whispers as whispersApi } from './lib/api'
 import { BookCard, BookCardSkeleton } from './components/BookCard'
 import { BookDetailDialog } from './components/BookDetailDialog'
 import { ShelfPanel } from './components/ShelfPanel'
@@ -12,6 +12,7 @@ import { EnrichmentPanel } from './components/EnrichmentPanel'
 import { ImportPanel } from './components/ImportPanel'
 import { AddBookDialog } from './components/AddBookDialog'
 import { RecommendationDialog } from './components/RecommendationDialog'
+import { WhisperPanel } from './components/WhisperPanel'
 
 // ── Sort & filter ─────────────────────────────────────────────────────────────
 type SortKey = 'title' | 'creator' | 'added' | 'rating'
@@ -146,6 +147,9 @@ export default function App() {
   const [showStats, setShowStats] = useState(false)
   const [loading, setLoading] = useState(true)
 
+  const [whisperQueue, setWhisperQueue] = useState<WhisperResponse[]>([])
+  const [lastWhisperId, setLastWhisperId] = useState(0)
+
   const [sortKey, setSortKey] = useState<SortKey>('title')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 
@@ -174,6 +178,29 @@ export default function App() {
 
   useEffect(() => { loadBooks() }, [loadBooks])
   useEffect(() => { loadShelves(); loadEnrichStatus() }, [])
+
+  // Poll whispers
+  useEffect(() => {
+    const pollWhispers = async () => {
+      try {
+        const latest = await whispersApi.latest()
+        if (latest && latest.length > 0) {
+          const ascending = [...latest].reverse()
+          const newWhispers = ascending.filter(w => w.id > lastWhisperId)
+          if (newWhispers.length > 0) {
+            setLastWhisperId(newWhispers[newWhispers.length - 1].id)
+            setWhisperQueue(prev => [...prev, ...newWhispers])
+          }
+        }
+      } catch (e) {
+        // API offline or error
+      }
+    }
+
+    pollWhispers()
+    const t = setInterval(pollWhispers, 10000)
+    return () => clearInterval(t)
+  }, [lastWhisperId])
 
   // ── Semantic search (debounced) ─────────────────────────────────────────────
   const handleSearch = useCallback(async (q: string) => {
@@ -492,6 +519,8 @@ export default function App() {
           onAdded={handleBookAdded}
         />
       )}
+
+      <WhisperPanel queue={whisperQueue} setQueue={setWhisperQueue} />
     </div>
   )
 }

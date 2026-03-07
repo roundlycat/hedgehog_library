@@ -1,5 +1,21 @@
 from typing import Optional
 from pydantic import BaseModel
+from datetime import datetime
+
+class WhisperCreate(BaseModel):
+    agent: str
+    text: str
+    triggered_by: Optional[str] = None
+
+class WhisperResponse(BaseModel):
+    id: int
+    agent: str
+    text: str
+    triggered_by: Optional[str] = None
+    created_at: datetime
+    
+    model_config = {"from_attributes": True}
+
 
 
 class BookBase(BaseModel):

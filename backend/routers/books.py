@@ -57,11 +57,11 @@ async def create_book(data: BookCreate, db: AsyncSession = Depends(get_db)):
             raise HTTPException(status_code=409, detail="Book with this ISBN already exists")
     
     book = Book(**data.model_dump())
-    embedding = await generate_book_embedding(
-        book.title, book.creators, book.description,
-        book.tags, book.time_period, book.philosophical_school
-    )
-    book.embedding = embedding
+    
+    # We skip embedding generation inline to prevent 30s timeouts and Render OOMs.
+    # The book goes into the enrichment queue (enriched=False).
+    book.enriched = False
+    
     db.add(book)
     try:
         await db.flush()

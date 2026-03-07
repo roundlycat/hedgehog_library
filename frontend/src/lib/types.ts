@@ -58,3 +58,11 @@ export interface EnrichStatus {
 export type ReadingStatus = 'unread' | 'reading' | 'read'
 
 export type ViewMode = 'library' | 'shelves' | 'search'
+
+export interface WhisperResponse {
+  id: number
+  agent: string
+  text: string
+  triggered_by: string | null
+  created_at: string
+}
