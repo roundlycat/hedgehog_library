@@ -26,9 +26,7 @@ export const books = {
   importCSV: (file: File) => {
     const form = new FormData()
     form.append('file', file)
-    return api.post('/books/import/csv', form, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    }).then(r => r.data)
+    return api.post('/books/import/csv', form).then(r => r.data)
   },
 
   isbnLookup: (isbn: string) =>

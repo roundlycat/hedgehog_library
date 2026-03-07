@@ -1,5 +1,20 @@
 import asyncio
+import os
 from functools import lru_cache
+
+# Limit thread count to save RAM on 512MB instances before importing heavy lifting ML libs
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
+try:
+    import torch
+    torch.set_num_threads(1)
+except ImportError:
+    pass
+
 from sentence_transformers import SentenceTransformer
 from config import settings
 
