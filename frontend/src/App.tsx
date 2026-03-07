@@ -199,14 +199,41 @@ export default function App() {
 
   // ── Derived display list ────────────────────────────────────────────────────
   const displayBooks = useMemo((): Array<{ book: Book; score?: number }> => {
-    if (searchResults) {
-      return searchResults.map(r => ({ book: r.book, score: r.score }))
+    if (searchQuery) {
+      const qLower = searchQuery.toLowerCase()
+      // 1. Give instant exact text matches (covers imported books lacking embeddings)
+      const localMatches = books.filter(b =>
+        b.title?.toLowerCase().includes(qLower) ||
+        b.creators?.toLowerCase().includes(qLower) ||
+        b.description?.toLowerCase().includes(qLower)
+      )
+
+      // 2. Append semantic matches once they arrive (covers vibes/themes)
+      const semMatches = searchResults || []
+
+      const combined: Array<{ book: Book; score?: number }> = []
+      const seen = new Set<number>()
+
+      for (const b of localMatches) {
+        combined.push({ book: b })
+        seen.add(b.id)
+      }
+
+      for (const sm of semMatches) {
+        if (!seen.has(sm.book.id)) {
+          combined.push({ book: sm.book, score: sm.score })
+          seen.add(sm.book.id)
+        }
+      }
+
+      return combined
     }
+
     const filtered = statusFilter === 'all'
       ? books
       : books.filter(b => b.reading_status === statusFilter)
     return sortBooks(filtered, sortKey).map(b => ({ book: b }))
-  }, [searchResults, books, sortKey, statusFilter])
+  }, [searchQuery, searchResults, books, sortKey, statusFilter])
 
   // ── Book CRUD callbacks ─────────────────────────────────────────────────────
   const handleBookUpdate = (updated: Book) => {
@@ -236,7 +263,7 @@ export default function App() {
   }
 
   const shelfLabel = activeShelf ? `Shelf ${activeShelf}` : 'All Books'
-  const displayCount = searchResults ? searchResults.length : displayBooks.length
+  const displayCount = displayBooks.length
 
   return (
     <div className="min-h-screen bg-cream-100">
@@ -384,14 +411,14 @@ export default function App() {
             <div className="flex items-center gap-2 min-w-0">
               <Library size={15} className="text-bark-400 flex-shrink-0" />
               <h1 className="font-serif font-bold text-bark-900 text-lg leading-tight truncate">
-                {searchResults ? `"${searchQuery}"` : shelfLabel}
+                {searchQuery ? `"${searchQuery}"` : shelfLabel}
               </h1>
               <span className="text-sm text-bark-400 tabular-nums flex-shrink-0">
                 ({displayCount})
               </span>
             </div>
 
-            {!searchResults && (
+            {!searchQuery && (
               <div className="flex items-center gap-2 flex-wrap">
                 <StatusChips filter={statusFilter} onChange={f => { setStatusFilter(f) }} />
                 <SortDropdown sort={sortKey} onSort={setSortKey} />
@@ -411,7 +438,7 @@ export default function App() {
           )}
 
           {/* Book grid */}
-          {loading && !searchResults ? (
+          {loading && !searchQuery ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {Array.from({ length: 12 }).map((_, i) => <BookCardSkeleton key={i} />)}
             </div>
